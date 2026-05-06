@@ -16,9 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from gymsisAPI.views import register_user
+from gymsisAPI.views import login_user, register_user
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/register/', register_user),
+    path('register/', register_user),
+    path('login/', login_user),
 ]
