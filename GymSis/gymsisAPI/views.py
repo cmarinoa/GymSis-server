@@ -2,9 +2,10 @@ import json
 
 from django.contrib.auth.hashers import check_password, make_password
 from django.http import JsonResponse
+from django.utils.dateparse import parse_date
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import User
+from .models import Session, User
 
 
 # Register a new user
@@ -81,3 +82,46 @@ def login_user(request):
         "user_id": user.id,
         "name": user.name
     })
+
+
+# Register a new gym session
+@csrf_exempt
+def register_session(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
+
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        return JsonResponse({"error": "User is not logged in"}, status=401)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    date_text = data.get("date")
+
+    if not date_text:
+        return JsonResponse({"error": "Date is required"}, status=400)
+
+    session_date = parse_date(date_text)
+
+    if not session_date:
+        return JsonResponse({"error": "Date must use YYYY-MM-DD format"}, status=400)
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+
+    session = Session.objects.create(
+        user=user,
+        date=session_date
+    )
+
+    return JsonResponse({
+        "message": "Session registered successfully",
+        "session_number": session.id,
+        "date": session.date.isoformat()
+    }, status=201)

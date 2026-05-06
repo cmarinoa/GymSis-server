@@ -13,7 +13,7 @@ class User(models.Model):
 
 class Session(models.Model):
     id = models.AutoField(primary_key=True)
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateField()
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")
 
 class Cardio(models.Model):
