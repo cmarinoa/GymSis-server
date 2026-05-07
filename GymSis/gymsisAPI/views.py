@@ -128,6 +128,72 @@ def register_session(request):
     }, status=201)
 
 
+# Get all sessions from the logged in user
+def get_sessions(request):
+    if request.method != "GET":
+        return JsonResponse({"error": "Only GET requests are allowed"}, status=405)
+
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        return JsonResponse({"error": "User is not logged in"}, status=401)
+
+    sessions = Session.objects.filter(user_id=user_id).order_by("date", "id")
+    session_list = []
+
+    for session in sessions:
+        session_list.append({
+            "session_number": session.id,
+            "date": session.date.isoformat()
+        })
+
+    return JsonResponse({"sessions": session_list})
+
+
+# Get all exercises from one session
+def get_exercises(request):
+    if request.method != "GET":
+        return JsonResponse({"error": "Only GET requests are allowed"}, status=405)
+
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        return JsonResponse({"error": "User is not logged in"}, status=401)
+
+    session_id = request.GET.get("session_id")
+
+    if not session_id:
+        return JsonResponse({"error": "Session is required"}, status=400)
+
+    try:
+        session = Session.objects.get(id=session_id, user_id=user_id)
+    except Session.DoesNotExist:
+        return JsonResponse({"error": "Session not found"}, status=404)
+
+    exercise_list = []
+
+    for exercise in SessionCardio.objects.filter(session=session):
+        exercise_list.append({
+            "exercise_id": exercise.id,
+            "exercise_type": "cardio",
+            "name": exercise.cardio.name,
+            "level": exercise.level,
+            "time": str(exercise.time),
+            "incline": exercise.incline
+        })
+
+    for exercise in SessionTraining.objects.filter(session=session):
+        exercise_list.append({
+            "exercise_id": exercise.id,
+            "exercise_type": "weights",
+            "name": exercise.training.name,
+            "weight": str(exercise.weight),
+            "reps": exercise.reps
+        })
+
+    return JsonResponse({"exercises": exercise_list})
+
+
 # Register a new exercise inside a session
 @csrf_exempt
 def register_exercise(request):
