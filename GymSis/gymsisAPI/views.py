@@ -16,6 +16,7 @@ def register_user(request):
         return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
 
     try:
+        # Read the JSON body sent by the frontend
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
@@ -29,6 +30,7 @@ def register_user(request):
     if User.objects.filter(name=name).exists():
         return JsonResponse({"error": "User already exists"}, status=400)
 
+    # Create the user with empty measurements at first
     user = User.objects.create(
         name=name,
         password=make_password(password),
@@ -54,6 +56,7 @@ def login_user(request):
         return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
 
     try:
+        # Read the login data sent by the frontend
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
@@ -72,6 +75,7 @@ def login_user(request):
     if not check_password(password, user.password):
         return JsonResponse({"error": "Invalid name or password"}, status=400)
 
+    # Start a Django session and store the logged in user inside it
     request.session.flush()
     request.session["user_id"] = user.id
     request.session["user_name"] = user.name
@@ -88,6 +92,7 @@ def login_user(request):
 # Manage gym sessions
 @csrf_exempt
 def sessions(request):
+    # One route handles both reading sessions and creating sessions
     if request.method == "GET":
         return get_sessions(request)
 
@@ -109,6 +114,7 @@ def register_session(request):
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
     try:
+        # Read the JSON body with the session date
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
@@ -128,6 +134,7 @@ def register_session(request):
     except User.DoesNotExist:
         return JsonResponse({"error": "User not found"}, status=404)
 
+    # Create the session linked to the logged in user
     session = Session.objects.create(
         user=user,
         date=session_date
@@ -150,16 +157,87 @@ def get_sessions(request):
     if not user_id:
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
+    # Order the sessions so they are returned in a stable way
     sessions = Session.objects.filter(user_id=user_id).order_by("date", "id")
     session_list = []
 
     for session in sessions:
+        # Build a simple dictionary for each session
         session_list.append({
             "session_number": session.id,
             "date": session.date.isoformat()
         })
 
     return JsonResponse({"sessions": session_list})
+
+
+# Manage one session
+@csrf_exempt
+def session_detail(request, session_id):
+    # One route handles both editing and deleting one session
+    if request.method == "PUT":
+        return update_session(request, session_id)
+
+    if request.method == "DELETE":
+        return delete_session(request, session_id)
+
+    return JsonResponse({"error": "Only PUT and DELETE requests are allowed"}, status=405)
+
+
+# Update the date of one session
+def update_session(request, session_id):
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        return JsonResponse({"error": "User is not logged in"}, status=401)
+
+    try:
+        session = Session.objects.get(id=session_id, user_id=user_id)
+    except Session.DoesNotExist:
+        return JsonResponse({"error": "Session not found"}, status=404)
+
+    try:
+        # Read the new date sent by the frontend
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    date_text = data.get("date")
+
+    if not date_text:
+        return JsonResponse({"error": "Date is required"}, status=400)
+
+    session_date = parse_date(date_text)
+
+    if not session_date:
+        return JsonResponse({"error": "Date must use YYYY-MM-DD format"}, status=400)
+
+    session.date = session_date
+    session.save()
+
+    return JsonResponse({
+        "message": "Session updated successfully",
+        "session_number": session.id,
+        "date": session.date.isoformat()
+    })
+
+
+# Delete one session
+def delete_session(request, session_id):
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        return JsonResponse({"error": "User is not logged in"}, status=401)
+
+    try:
+        session = Session.objects.get(id=session_id, user_id=user_id)
+    except Session.DoesNotExist:
+        return JsonResponse({"error": "Session not found"}, status=404)
+
+    # Deleting the session also deletes its linked exercises because of CASCADE
+    session.delete()
+
+    return JsonResponse({"message": "Session deleted successfully"})
 
 
 # Get all exercises from one session
@@ -185,8 +263,9 @@ def get_exercises(request):
     exercise_list = []
 
     for exercise in SessionCardio.objects.filter(session=session):
+        # Prefix the id with the type so the frontend can edit/delete the correct table
         exercise_list.append({
-            "exercise_id": exercise.id,
+            "exercise_id": f"cardio-{exercise.id}",
             "exercise_type": "cardio",
             "name": exercise.cardio.name,
             "level": exercise.level,
@@ -196,7 +275,7 @@ def get_exercises(request):
 
     for exercise in SessionTraining.objects.filter(session=session):
         exercise_list.append({
-            "exercise_id": exercise.id,
+            "exercise_id": f"weights-{exercise.id}",
             "exercise_type": "weights",
             "name": exercise.training.name,
             "weight": str(exercise.weight),
@@ -209,6 +288,7 @@ def get_exercises(request):
 # Manage the user's body measurements
 @csrf_exempt
 def measurements(request):
+    # One route handles both reading and saving measurements
     if request.method == "GET":
         return get_measurements(request)
 
@@ -227,6 +307,7 @@ def register_measurements(request):
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
     try:
+        # Read the measurements sent by the profile screen
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
@@ -238,6 +319,7 @@ def register_measurements(request):
         value = data.get(field)
 
         if value == "":
+            # Empty inputs are stored as 0
             value = 0
 
         try:
@@ -294,6 +376,7 @@ def get_measurements(request):
 # Manage exercises
 @csrf_exempt
 def exercises(request):
+    # One route handles both reading exercises and creating exercises
     if request.method == "GET":
         return get_exercises(request)
 
@@ -301,6 +384,19 @@ def exercises(request):
         return register_exercise(request)
 
     return JsonResponse({"error": "Only GET and POST requests are allowed"}, status=405)
+
+
+# Manage one exercise
+@csrf_exempt
+def exercise_detail(request, exercise_id):
+    # One route handles both editing and deleting one exercise
+    if request.method == "PUT":
+        return update_exercise(request, exercise_id)
+
+    if request.method == "DELETE":
+        return delete_exercise(request, exercise_id)
+
+    return JsonResponse({"error": "Only PUT and DELETE requests are allowed"}, status=405)
 
 
 # Register a new exercise inside a session
@@ -315,6 +411,7 @@ def register_exercise(request):
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
     try:
+        # Read the exercise data sent by the frontend
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
@@ -330,6 +427,7 @@ def register_exercise(request):
     except Session.DoesNotExist:
         return JsonResponse({"error": "Session not found"}, status=404)
 
+    # Send the data to the correct helper depending on the exercise type
     if exercise_type == "cardio":
         return register_cardio_exercise(data, session)
 
@@ -337,6 +435,75 @@ def register_exercise(request):
         return register_weight_exercise(data, session)
 
     return JsonResponse({"error": "Invalid exercise type"}, status=400)
+
+
+# Update one exercise
+def update_exercise(request, exercise_id):
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        return JsonResponse({"error": "User is not logged in"}, status=401)
+
+    exercise_type, exercise = get_saved_exercise(exercise_id, user_id)
+
+    if not exercise:
+        return JsonResponse({"error": "Exercise not found"}, status=404)
+
+    try:
+        # Read the edited values sent by the frontend
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    # Update the correct model depending on the exercise type
+    if exercise_type == "cardio":
+        return update_cardio_exercise(data, exercise)
+
+    return update_weight_exercise(data, exercise)
+
+
+# Delete one exercise
+def delete_exercise(request, exercise_id):
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        return JsonResponse({"error": "User is not logged in"}, status=401)
+
+    exercise_type, exercise = get_saved_exercise(exercise_id, user_id)
+
+    if not exercise:
+        return JsonResponse({"error": "Exercise not found"}, status=404)
+
+    # Delete the record from its table
+    exercise.delete()
+
+    return JsonResponse({"message": "Exercise deleted successfully"})
+
+
+# Find one saved exercise using its type prefix and id
+def get_saved_exercise(exercise_id, user_id):
+    # The frontend sends ids like cardio-3 or weights-5
+    if exercise_id.startswith("cardio-"):
+        cardio_id = exercise_id.replace("cardio-", "", 1)
+
+        try:
+            exercise = SessionCardio.objects.get(id=cardio_id, session__user_id=user_id)
+        except SessionCardio.DoesNotExist:
+            return None, None
+
+        return "cardio", exercise
+
+    if exercise_id.startswith("weights-"):
+        weight_id = exercise_id.replace("weights-", "", 1)
+
+        try:
+            exercise = SessionTraining.objects.get(id=weight_id, session__user_id=user_id)
+        except SessionTraining.DoesNotExist:
+            return None, None
+
+        return "weights", exercise
+
+    return None, None
 
 
 # Register a cardio exercise
@@ -359,6 +526,7 @@ def register_cardio_exercise(data, session):
         return JsonResponse({"error": "Invalid cardio exercise"}, status=400)
 
     if cardio_name == "Swimming":
+        # Swimming does not use level in this app
         level = 0
     elif not level:
         return JsonResponse({"error": "Level is required"}, status=400)
@@ -377,6 +545,7 @@ def register_cardio_exercise(data, session):
         return JsonResponse({"error": "Exercise values must be valid numbers"}, status=400)
 
     cardio, created = Cardio.objects.get_or_create(name=cardio_name)
+    # Create the session-specific cardio record
     exercise = SessionCardio.objects.create(
         session=session,
         cardio=cardio,
@@ -387,7 +556,7 @@ def register_cardio_exercise(data, session):
 
     return JsonResponse({
         "message": "Exercise registered successfully",
-        "exercise_id": exercise.id,
+        "exercise_id": f"cardio-{exercise.id}",
         "exercise_type": "cardio",
         "name": cardio.name,
         "level": exercise.level,
@@ -412,6 +581,7 @@ def register_weight_exercise(data, session):
         return JsonResponse({"error": "Exercise values must be valid numbers"}, status=400)
 
     training, created = WeightTraining.objects.get_or_create(name=exercise_name)
+    # Create the session-specific weight training record
     exercise = SessionTraining.objects.create(
         session=session,
         training=training,
@@ -421,9 +591,98 @@ def register_weight_exercise(data, session):
 
     return JsonResponse({
         "message": "Exercise registered successfully",
-        "exercise_id": exercise.id,
+        "exercise_id": f"weights-{exercise.id}",
         "exercise_type": "weights",
         "name": training.name,
         "weight": str(exercise.weight),
         "reps": exercise.reps
     }, status=201)
+
+
+# Update a cardio exercise
+def update_cardio_exercise(data, exercise):
+    cardio_name = data.get("name")
+    level = data.get("level")
+    time = data.get("time")
+    incline = data.get("incline", 0)
+
+    cardio_options = [
+        "Treadmill",
+        "Bike",
+        "Stairmaster",
+        "Elliptical",
+        "Rowing machine",
+        "Swimming"
+    ]
+
+    if cardio_name not in cardio_options:
+        return JsonResponse({"error": "Invalid cardio exercise"}, status=400)
+
+    if cardio_name == "Swimming":
+        # Swimming keeps level at 0
+        level = 0
+    elif not level:
+        return JsonResponse({"error": "Level is required"}, status=400)
+
+    if not time:
+        return JsonResponse({"error": "Time is required"}, status=400)
+
+    if cardio_name == "Treadmill" and incline == "":
+        return JsonResponse({"error": "Incline is required for treadmill"}, status=400)
+
+    try:
+        level = int(level)
+        time = Decimal(str(time))
+        incline = int(incline or 0)
+    except (ValueError, InvalidOperation):
+        return JsonResponse({"error": "Exercise values must be valid numbers"}, status=400)
+
+    cardio, created = Cardio.objects.get_or_create(name=cardio_name)
+    # Update the saved exercise with the new values
+    exercise.cardio = cardio
+    exercise.level = level
+    exercise.time = time
+    exercise.incline = incline
+    exercise.save()
+
+    return JsonResponse({
+        "message": "Exercise updated successfully",
+        "exercise_id": f"cardio-{exercise.id}",
+        "exercise_type": "cardio",
+        "name": exercise.cardio.name,
+        "level": exercise.level,
+        "time": str(exercise.time),
+        "incline": exercise.incline
+    })
+
+
+# Update a weight training exercise
+def update_weight_exercise(data, exercise):
+    exercise_name = data.get("name")
+    weight = data.get("weight")
+    reps = data.get("reps")
+
+    if not exercise_name or not weight or not reps:
+        return JsonResponse({"error": "Name, weight and reps are required"}, status=400)
+
+    try:
+        weight = Decimal(str(weight))
+        reps = int(reps)
+    except (ValueError, InvalidOperation):
+        return JsonResponse({"error": "Exercise values must be valid numbers"}, status=400)
+
+    training, created = WeightTraining.objects.get_or_create(name=exercise_name)
+    # Update the saved exercise with the new values
+    exercise.training = training
+    exercise.weight = weight
+    exercise.reps = reps
+    exercise.save()
+
+    return JsonResponse({
+        "message": "Exercise updated successfully",
+        "exercise_id": f"weights-{exercise.id}",
+        "exercise_type": "weights",
+        "name": exercise.training.name,
+        "weight": str(exercise.weight),
+        "reps": exercise.reps
+    })

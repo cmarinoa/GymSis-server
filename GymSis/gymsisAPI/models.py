@@ -1,5 +1,7 @@
 from django.db import models
 
+
+# Stores the basic data for each user
 class User(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=120)
@@ -11,16 +13,21 @@ class User(models.Model):
     hips = models.DecimalField(decimal_places=2, max_digits=20)
     thighs = models.DecimalField(decimal_places=2, max_digits=20)
 
+
+# Stores one gym session for one user
 class Session(models.Model):
     id = models.AutoField(primary_key=True)
     date = models.DateField()
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")
 
+
+# Stores the cardio exercise names
 class Cardio(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=120)
 
 
+# Links one cardio exercise with one session
 class SessionCardio(models.Model):
     id = models.AutoField(primary_key=True)
     session = models.ForeignKey(Session, on_delete=models.CASCADE)
@@ -29,10 +36,14 @@ class SessionCardio(models.Model):
     level = models.PositiveIntegerField()
     incline = models.PositiveIntegerField()
 
+
+# Stores the weight training exercise names
 class WeightTraining(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=120)
 
+
+# Links one weight exercise with one session
 class SessionTraining(models.Model):
     id = models.AutoField(primary_key=True)
     session = models.ForeignKey(Session, on_delete=models.CASCADE)
