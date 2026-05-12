@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from ..models import User
+from .validation_helpers import validate_password, validate_username
 
 
 # Register a new user
@@ -24,18 +25,28 @@ def register_user(request):
     if not name or not password:
         return JsonResponse({"error": "Name and password are required"}, status=400)
 
+    username_error = validate_username(name)
+
+    if username_error:
+        return JsonResponse({"error": username_error}, status=400)
+
+    password_error = validate_password(password)
+
+    if password_error:
+        return JsonResponse({"error": password_error}, status=400)
+
     if User.objects.filter(name=name).exists():
         return JsonResponse({"error": "User already exists"}, status=400)
 
     user = User.objects.create(
         name=name,
         password=make_password(password),
-        weight=0,
-        height=0,
-        chest=0,
-        waist=0,
-        hips=0,
-        thighs=0
+        weight=None,
+        height=None,
+        chest=None,
+        waist=None,
+        hips=None,
+        thighs=None
     )
 
     return JsonResponse({

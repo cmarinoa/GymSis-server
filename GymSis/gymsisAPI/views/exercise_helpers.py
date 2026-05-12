@@ -1,8 +1,7 @@
-from decimal import Decimal, InvalidOperation
-
 from django.http import JsonResponse
 
 from ..models import Cardio, SessionCardio, SessionTraining, WeightTraining
+from .validation_helpers import parse_decimal_value, parse_int_value, validate_cardio_values, validate_weight_values
 
 
 # Find one saved exercise using its type prefix and id
@@ -60,12 +59,17 @@ def register_cardio_exercise(data, session):
     if cardio_name == "Treadmill" and incline == "":
         return JsonResponse({"error": "Incline is required for treadmill"}, status=400)
 
-    try:
-        level = int(level)
-        time = Decimal(str(time))
-        incline = int(incline or 0)
-    except (ValueError, InvalidOperation):
+    level, level_error = parse_int_value(level)
+    time, time_error = parse_decimal_value(time)
+    incline, incline_error = parse_int_value(incline or 0)
+
+    if level_error or time_error or incline_error:
         return JsonResponse({"error": "Exercise values must be valid numbers"}, status=400)
+
+    range_error = validate_cardio_values(level, time, incline)
+
+    if range_error:
+        return JsonResponse({"error": range_error}, status=400)
 
     cardio, created = Cardio.objects.get_or_create(name=cardio_name)
     exercise = SessionCardio.objects.create(
@@ -96,11 +100,16 @@ def register_weight_exercise(data, session):
     if not exercise_name or not weight or not reps:
         return JsonResponse({"error": "Name, weight and reps are required"}, status=400)
 
-    try:
-        weight = Decimal(str(weight))
-        reps = int(reps)
-    except (ValueError, InvalidOperation):
+    weight, weight_error = parse_decimal_value(weight)
+    reps, reps_error = parse_int_value(reps)
+
+    if weight_error or reps_error:
         return JsonResponse({"error": "Exercise values must be valid numbers"}, status=400)
+
+    range_error = validate_weight_values(weight, reps)
+
+    if range_error:
+        return JsonResponse({"error": range_error}, status=400)
 
     training, created = WeightTraining.objects.get_or_create(name=exercise_name)
     exercise = SessionTraining.objects.create(
@@ -150,12 +159,17 @@ def update_cardio_exercise(data, exercise):
     if cardio_name == "Treadmill" and incline == "":
         return JsonResponse({"error": "Incline is required for treadmill"}, status=400)
 
-    try:
-        level = int(level)
-        time = Decimal(str(time))
-        incline = int(incline or 0)
-    except (ValueError, InvalidOperation):
+    level, level_error = parse_int_value(level)
+    time, time_error = parse_decimal_value(time)
+    incline, incline_error = parse_int_value(incline or 0)
+
+    if level_error or time_error or incline_error:
         return JsonResponse({"error": "Exercise values must be valid numbers"}, status=400)
+
+    range_error = validate_cardio_values(level, time, incline)
+
+    if range_error:
+        return JsonResponse({"error": range_error}, status=400)
 
     cardio, created = Cardio.objects.get_or_create(name=cardio_name)
     exercise.cardio = cardio
@@ -184,11 +198,16 @@ def update_weight_exercise(data, exercise):
     if not exercise_name or not weight or not reps:
         return JsonResponse({"error": "Name, weight and reps are required"}, status=400)
 
-    try:
-        weight = Decimal(str(weight))
-        reps = int(reps)
-    except (ValueError, InvalidOperation):
+    weight, weight_error = parse_decimal_value(weight)
+    reps, reps_error = parse_int_value(reps)
+
+    if weight_error or reps_error:
         return JsonResponse({"error": "Exercise values must be valid numbers"}, status=400)
+
+    range_error = validate_weight_values(weight, reps)
+
+    if range_error:
+        return JsonResponse({"error": range_error}, status=400)
 
     training, created = WeightTraining.objects.get_or_create(name=exercise_name)
     exercise.training = training

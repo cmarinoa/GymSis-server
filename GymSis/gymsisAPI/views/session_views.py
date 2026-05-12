@@ -7,6 +7,26 @@ from django.views.decorators.csrf import csrf_exempt
 from ..models import Session, User
 
 
+# Build the session dictionary shown to the frontend
+def build_session_data(session, session_number):
+    return {
+        "session_id": session.id,
+        "session_number": session_number,
+        "date": session.date.isoformat()
+    }
+
+
+# Calculate the visible number for one session inside one user's list
+def get_session_number(session):
+    ordered_sessions = Session.objects.filter(user_id=session.user_id).order_by("date", "id")
+
+    for index, saved_session in enumerate(ordered_sessions, start=1):
+        if saved_session.id == session.id:
+            return index
+
+    return None
+
+
 # Manage gym sessions
 @csrf_exempt
 def sessions(request):
@@ -55,11 +75,15 @@ def register_session(request):
         date=session_date
     )
 
-    return JsonResponse({
-        "message": "Session registered successfully",
-        "session_number": session.id,
-        "date": session.date.isoformat()
-    }, status=201)
+    session_number = get_session_number(session)
+
+    return JsonResponse(
+        {
+            "message": "Session registered successfully",
+            **build_session_data(session, session_number)
+        },
+        status=201
+    )
 
 
 # Get all sessions from the logged in user
@@ -75,11 +99,8 @@ def get_sessions(request):
     sessions = Session.objects.filter(user_id=user_id).order_by("date", "id")
     session_list = []
 
-    for session in sessions:
-        session_list.append({
-            "session_number": session.id,
-            "date": session.date.isoformat()
-        })
+    for index, session in enumerate(sessions, start=1):
+        session_list.append(build_session_data(session, index))
 
     return JsonResponse({"sessions": session_list})
 
@@ -126,10 +147,11 @@ def update_session(request, session_id):
     session.date = session_date
     session.save()
 
+    session_number = get_session_number(session)
+
     return JsonResponse({
         "message": "Session updated successfully",
-        "session_number": session.id,
-        "date": session.date.isoformat()
+        **build_session_data(session, session_number)
     })
 
 

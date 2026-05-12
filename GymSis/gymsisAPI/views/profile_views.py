@@ -1,10 +1,18 @@
 import json
-from decimal import Decimal, InvalidOperation
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from ..models import User
+from .validation_helpers import parse_decimal_value, validate_measurement_range
+
+
+# Return a blank value when the measurement has not been filled yet
+def format_measurement_value(value):
+    if value is None or str(value) == "0" or str(value) == "0.00":
+        return ""
+
+    return str(value)
 
 
 # Manage the user's body measurements
@@ -38,12 +46,18 @@ def register_measurements(request):
         value = data.get(field)
 
         if value == "":
-            value = 0
+            measurements[field] = None
+            continue
 
-        try:
-            measurements[field] = Decimal(str(value))
-        except (InvalidOperation, TypeError):
+        measurements[field], error_message = parse_decimal_value(value)
+
+        if error_message:
             return JsonResponse({"error": "Measurements must be valid numbers"}, status=400)
+
+        range_error = validate_measurement_range(field, measurements[field])
+
+        if range_error:
+            return JsonResponse({"error": range_error}, status=400)
 
     try:
         user = User.objects.get(id=user_id)
@@ -60,12 +74,12 @@ def register_measurements(request):
 
     return JsonResponse({
         "message": "Measurements registered successfully",
-        "height": str(user.height),
-        "weight": str(user.weight),
-        "chest": str(user.chest),
-        "thighs": str(user.thighs),
-        "waist": str(user.waist),
-        "hips": str(user.hips)
+        "height": format_measurement_value(user.height),
+        "weight": format_measurement_value(user.weight),
+        "chest": format_measurement_value(user.chest),
+        "thighs": format_measurement_value(user.thighs),
+        "waist": format_measurement_value(user.waist),
+        "hips": format_measurement_value(user.hips)
     })
 
 
@@ -82,10 +96,10 @@ def get_measurements(request):
         return JsonResponse({"error": "User not found"}, status=404)
 
     return JsonResponse({
-        "height": str(user.height),
-        "weight": str(user.weight),
-        "chest": str(user.chest),
-        "thighs": str(user.thighs),
-        "waist": str(user.waist),
-        "hips": str(user.hips)
+        "height": format_measurement_value(user.height),
+        "weight": format_measurement_value(user.weight),
+        "chest": format_measurement_value(user.chest),
+        "thighs": format_measurement_value(user.thighs),
+        "waist": format_measurement_value(user.waist),
+        "hips": format_measurement_value(user.hips)
     })

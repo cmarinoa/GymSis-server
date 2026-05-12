@@ -6,12 +6,12 @@ class User(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=120)
     password = models.CharField(max_length=120)
-    weight = models.DecimalField(decimal_places=2, max_digits=20)
-    height = models.DecimalField(decimal_places=2, max_digits=20)
-    chest = models.DecimalField(decimal_places=2, max_digits=20)
-    waist = models.DecimalField(decimal_places=2, max_digits=20)
-    hips = models.DecimalField(decimal_places=2, max_digits=20)
-    thighs = models.DecimalField(decimal_places=2, max_digits=20)
+    weight = models.DecimalField(decimal_places=2, max_digits=20, null=True, blank=True)
+    height = models.DecimalField(decimal_places=2, max_digits=20, null=True, blank=True)
+    chest = models.DecimalField(decimal_places=2, max_digits=20, null=True, blank=True)
+    waist = models.DecimalField(decimal_places=2, max_digits=20, null=True, blank=True)
+    hips = models.DecimalField(decimal_places=2, max_digits=20, null=True, blank=True)
+    thighs = models.DecimalField(decimal_places=2, max_digits=20, null=True, blank=True)
 
 
 # Stores one gym session for one user
