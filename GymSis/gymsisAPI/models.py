@@ -43,6 +43,13 @@ class WeightTraining(models.Model):
     name = models.CharField(max_length=120)
 
 
+# Stores one saved weight training exercise for one user
+class UserExercise(models.Model):
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="saved_exercises")
+    name = models.CharField(max_length=120)
+
+
 # Links one weight exercise with one session
 class SessionTraining(models.Model):
     id = models.AutoField(primary_key=True)
