@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from gymsisAPI.views import exercise_detail, exercises, get_saved_session, login_user, measurements, register_user, session_detail, sessions, user_exercise_detail, user_exercises
+from gymsisAPI.views import exercise_detail, exercises, get_saved_session, login_user, measurements, progress, register_user, session_detail, sessions, user_exercise_detail, user_exercises
 
 # Main routes used by the desktop app
 urlpatterns = [
@@ -11,6 +11,7 @@ urlpatterns = [
     path('sessions/', sessions),
     path('sessions/<int:session_id>/', session_detail),
     path('exercises/', exercises),
+    path('progress/', progress),
     # exercise_id is a string because it includes the type too, for example cardio-3.
     # what this achieves is that we can reuse this detail endpoint for the two different
     # types of exercises

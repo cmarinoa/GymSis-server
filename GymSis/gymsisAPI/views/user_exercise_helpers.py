@@ -2,7 +2,8 @@
 def build_user_exercise_data(exercise):
     return {
         "exercise_id": exercise.id,
-        "name": exercise.name
+        "name": exercise.name,
+        "is_active": exercise.is_active
     }
 
 
