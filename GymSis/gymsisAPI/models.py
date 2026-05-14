@@ -37,24 +37,25 @@ class SessionCardio(models.Model):
     incline = models.PositiveIntegerField()
 
 
-# Stores the weight training exercise names
-class WeightTraining(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=120)
-
-
-# Stores one saved weight training exercise for one user
+# Stores one saved weight exercise for one user
+# This is now the main exercise record used by the app.
+# The same exercise can be reused in many different sessions.
 class UserExercise(models.Model):
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="saved_exercises")
     name = models.CharField(max_length=120)
+    # Deleted exercises should stay in the database so the user can still
+    # see the progress they made in the past.
+    is_active = models.BooleanField(default=True)
 
 
-# Links one weight exercise with one session
+# Links one saved weight exercise with one session
+# The weight and reps belong to one workout day, but the exercise identity
+# comes from UserExercise so the app can track progress over time.
 class SessionTraining(models.Model):
     id = models.AutoField(primary_key=True)
     session = models.ForeignKey(Session, on_delete=models.CASCADE)
-    training = models.ForeignKey(WeightTraining, on_delete=models.CASCADE)
+    user_exercise = models.ForeignKey(UserExercise, on_delete=models.CASCADE)
     weight = models.DecimalField(decimal_places=2, max_digits=20)
     reps = models.PositiveIntegerField()
 
