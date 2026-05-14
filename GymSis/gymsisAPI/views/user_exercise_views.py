@@ -46,12 +46,13 @@ def register_user_exercise(request):
     except User.DoesNotExist:
         return JsonResponse({"error": "User not found"}, status=404)
 
-    if UserExercise.objects.filter(user=user, name=name).exists():
+    if UserExercise.objects.filter(user=user, name=name, is_active=True).exists():
         return JsonResponse({"error": "Exercise already exists"}, status=400)
 
     exercise = UserExercise.objects.create(
         user=user,
-        name=name
+        name=name,
+        is_active=True
     )
 
     return JsonResponse({
@@ -67,7 +68,7 @@ def get_user_exercises(request):
     if not user_id:
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
-    saved_exercises = UserExercise.objects.filter(user_id=user_id).order_by("name", "id")
+    saved_exercises = UserExercise.objects.filter(user_id=user_id, is_active=True).order_by("name", "id")
     exercise_list = []
 
     for exercise in saved_exercises:
@@ -99,7 +100,7 @@ def get_user_exercise(request, exercise_id):
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
     try:
-        exercise = UserExercise.objects.get(id=exercise_id, user_id=user_id)
+        exercise = UserExercise.objects.get(id=exercise_id, user_id=user_id, is_active=True)
     except UserExercise.DoesNotExist:
         return JsonResponse({"error": "Exercise not found"}, status=404)
 
@@ -114,7 +115,7 @@ def update_user_exercise(request, exercise_id):
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
     try:
-        exercise = UserExercise.objects.get(id=exercise_id, user_id=user_id)
+        exercise = UserExercise.objects.get(id=exercise_id, user_id=user_id, is_active=True)
     except UserExercise.DoesNotExist:
         return JsonResponse({"error": "Exercise not found"}, status=404)
 
@@ -133,7 +134,7 @@ def update_user_exercise(request, exercise_id):
     if name_error:
         return JsonResponse({"error": name_error}, status=400)
 
-    if UserExercise.objects.filter(user_id=user_id, name=name).exclude(id=exercise.id).exists():
+    if UserExercise.objects.filter(user_id=user_id, name=name, is_active=True).exclude(id=exercise.id).exists():
         return JsonResponse({"error": "Exercise already exists"}, status=400)
 
     exercise.name = name
@@ -153,10 +154,11 @@ def delete_user_exercise(request, exercise_id):
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
     try:
-        exercise = UserExercise.objects.get(id=exercise_id, user_id=user_id)
+        exercise = UserExercise.objects.get(id=exercise_id, user_id=user_id, is_active=True)
     except UserExercise.DoesNotExist:
         return JsonResponse({"error": "Exercise not found"}, status=404)
 
-    exercise.delete()
+    exercise.is_active = False
+    exercise.save()
 
-    return JsonResponse({"message": "Exercise deleted successfully"})
+    return JsonResponse({"message": "Exercise archived successfully"})

@@ -55,7 +55,8 @@ def get_exercises(request):
         exercise_list.append({
             "exercise_id": f"weights-{exercise.id}",
             "exercise_type": "weights",
-            "name": exercise.training.name,
+            "user_exercise_id": exercise.user_exercise.id,
+            "name": exercise.user_exercise.name,
             "weight": str(exercise.weight),
             "reps": exercise.reps
         })

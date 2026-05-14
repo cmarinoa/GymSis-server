@@ -11,7 +11,9 @@ urlpatterns = [
     path('sessions/', sessions),
     path('sessions/<int:session_id>/', session_detail),
     path('exercises/', exercises),
-    # exercise_id is a string because it includes the type too, for example cardio-3
+    # exercise_id is a string because it includes the type too, for example cardio-3.
+    # what this achieves is that we can reuse this detail endpoint for the two different
+    # types of exercises
     path('exercises/<str:exercise_id>/', exercise_detail),
     path('user-exercises/', user_exercises),
     path('user-exercises/<int:exercise_id>/', user_exercise_detail),

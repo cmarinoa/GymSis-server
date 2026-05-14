@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 
-from ..models import Cardio, SessionCardio, SessionTraining, WeightTraining
+from ..models import Cardio, SessionCardio, SessionTraining, UserExercise
 from .validation_helpers import parse_decimal_value, parse_int_value, validate_cardio_values, validate_weight_values
 
 
@@ -93,12 +93,12 @@ def register_cardio_exercise(data, session):
 
 # Register a weight training exercise
 def register_weight_exercise(data, session):
-    exercise_name = data.get("name")
+    user_exercise_id = data.get("user_exercise_id")
     weight = data.get("weight")
     reps = data.get("reps")
 
-    if not exercise_name or not weight or not reps:
-        return JsonResponse({"error": "Name, weight and reps are required"}, status=400)
+    if not user_exercise_id or not weight or not reps:
+        return JsonResponse({"error": "Exercise, weight and reps are required"}, status=400)
 
     weight, weight_error = parse_decimal_value(weight)
     reps, reps_error = parse_int_value(reps)
@@ -111,10 +111,18 @@ def register_weight_exercise(data, session):
     if range_error:
         return JsonResponse({"error": range_error}, status=400)
 
-    training, created = WeightTraining.objects.get_or_create(name=exercise_name)
+    try:
+        user_exercise = UserExercise.objects.get(
+            id=user_exercise_id,
+            user_id=session.user_id,
+            is_active=True
+        )
+    except UserExercise.DoesNotExist:
+        return JsonResponse({"error": "Exercise not found"}, status=404)
+
     exercise = SessionTraining.objects.create(
         session=session,
-        training=training,
+        user_exercise=user_exercise,
         weight=weight,
         reps=reps
     )
@@ -123,7 +131,8 @@ def register_weight_exercise(data, session):
         "message": "Exercise registered successfully",
         "exercise_id": f"weights-{exercise.id}",
         "exercise_type": "weights",
-        "name": training.name,
+        "user_exercise_id": exercise.user_exercise.id,
+        "name": exercise.user_exercise.name,
         "weight": str(exercise.weight),
         "reps": exercise.reps
     }, status=201)
@@ -191,12 +200,12 @@ def update_cardio_exercise(data, exercise):
 
 # Update a weight training exercise
 def update_weight_exercise(data, exercise):
-    exercise_name = data.get("name")
+    user_exercise_id = data.get("user_exercise_id")
     weight = data.get("weight")
     reps = data.get("reps")
 
-    if not exercise_name or not weight or not reps:
-        return JsonResponse({"error": "Name, weight and reps are required"}, status=400)
+    if not user_exercise_id or not weight or not reps:
+        return JsonResponse({"error": "Exercise, weight and reps are required"}, status=400)
 
     weight, weight_error = parse_decimal_value(weight)
     reps, reps_error = parse_int_value(reps)
@@ -209,8 +218,16 @@ def update_weight_exercise(data, exercise):
     if range_error:
         return JsonResponse({"error": range_error}, status=400)
 
-    training, created = WeightTraining.objects.get_or_create(name=exercise_name)
-    exercise.training = training
+    try:
+        user_exercise = UserExercise.objects.get(
+            id=user_exercise_id,
+            user_id=exercise.session.user_id,
+            is_active=True
+        )
+    except UserExercise.DoesNotExist:
+        return JsonResponse({"error": "Exercise not found"}, status=404)
+
+    exercise.user_exercise = user_exercise
     exercise.weight = weight
     exercise.reps = reps
     exercise.save()
@@ -219,7 +236,8 @@ def update_weight_exercise(data, exercise):
         "message": "Exercise updated successfully",
         "exercise_id": f"weights-{exercise.id}",
         "exercise_type": "weights",
-        "name": exercise.training.name,
+        "user_exercise_id": exercise.user_exercise.id,
+        "name": exercise.user_exercise.name,
         "weight": str(exercise.weight),
         "reps": exercise.reps
     })
