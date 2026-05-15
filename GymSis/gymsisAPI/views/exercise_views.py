@@ -30,6 +30,10 @@ def get_exercises(request):
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
     session_id = request.GET.get("session_id")
+    search = request.GET.get("search", "")
+
+    if isinstance(search, str):
+        search = search.strip()
 
     if not session_id:
         return JsonResponse({"error": "Session is required"}, status=400)
@@ -40,8 +44,14 @@ def get_exercises(request):
         return JsonResponse({"error": "Session not found"}, status=404)
 
     exercise_list = []
+    cardio_exercises = SessionCardio.objects.filter(session=session)
+    weight_exercises = SessionTraining.objects.filter(session=session)
 
-    for exercise in SessionCardio.objects.filter(session=session):
+    if search:
+        cardio_exercises = cardio_exercises.filter(cardio__name__icontains=search)
+        weight_exercises = weight_exercises.filter(user_exercise__name__icontains=search)
+
+    for exercise in cardio_exercises:
         exercise_list.append({
             "exercise_id": f"cardio-{exercise.id}",
             "exercise_type": "cardio",
@@ -51,7 +61,7 @@ def get_exercises(request):
             "incline": exercise.incline
         })
 
-    for exercise in SessionTraining.objects.filter(session=session):
+    for exercise in weight_exercises:
         exercise_list.append({
             "exercise_id": f"weights-{exercise.id}",
             "exercise_type": "weights",

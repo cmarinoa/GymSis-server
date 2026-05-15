@@ -69,11 +69,18 @@ def get_user_exercises(request):
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
     include_inactive = request.GET.get("include_inactive")
+    search = request.GET.get("search", "")
+
+    if isinstance(search, str):
+        search = search.strip()
 
     saved_exercises = UserExercise.objects.filter(user_id=user_id)
 
     if include_inactive != "1":
         saved_exercises = saved_exercises.filter(is_active=True)
+
+    if search:
+        saved_exercises = saved_exercises.filter(name__icontains=search)
 
     saved_exercises = saved_exercises.order_by("name", "id")
     exercise_list = []
