@@ -5,6 +5,7 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.csrf import csrf_exempt
 
 from ..models import Session, User
+from .validation_helpers import validate_session_filter_dates
 
 
 # Build the session dictionary shown to the frontend
@@ -96,7 +97,22 @@ def get_sessions(request):
     if not user_id:
         return JsonResponse({"error": "User is not logged in"}, status=401)
 
-    sessions = Session.objects.filter(user_id=user_id).order_by("date", "id")
+    date_from_text = request.GET.get("date_from", "")
+    date_to_text = request.GET.get("date_to", "")
+    date_from, date_to, date_error = validate_session_filter_dates(date_from_text, date_to_text)
+
+    if date_error:
+        return JsonResponse({"error": date_error}, status=400)
+
+    sessions = Session.objects.filter(user_id=user_id)
+
+    if date_from:
+        sessions = sessions.filter(date__gte=date_from)
+
+    if date_to:
+        sessions = sessions.filter(date__lte=date_to)
+
+    sessions = sessions.order_by("date", "id")
     session_list = []
 
     for index, session in enumerate(sessions, start=1):

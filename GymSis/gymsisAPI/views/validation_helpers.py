@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from django.utils.dateparse import parse_date
 
 
 # Check if the username follows some basic rules
@@ -88,3 +89,26 @@ def validate_weight_values(weight, reps):
         return "Reps must be between 1 and 100"
 
     return None
+
+
+# Check if the session filter dates can be used safely
+def validate_session_filter_dates(date_from_text, date_to_text):
+    date_from = None
+    date_to = None
+
+    if date_from_text:
+        date_from = parse_date(date_from_text)
+
+        if not date_from:
+            return None, None, "From date must use YYYY-MM-DD format"
+
+    if date_to_text:
+        date_to = parse_date(date_to_text)
+
+        if not date_to:
+            return None, None, "To date must use YYYY-MM-DD format"
+
+    if date_from and date_to and date_from > date_to:
+        return None, None, "From date cannot be later than to date"
+
+    return date_from, date_to, None
