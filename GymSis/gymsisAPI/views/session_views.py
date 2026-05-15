@@ -12,7 +12,7 @@ def build_session_data(session, session_number):
     return {
         "session_id": session.id,
         "session_number": session_number,
-        "date": session.date.isoformat()
+        "date": session.date.strftime("%d/%m/%Y")
     }
 
 
